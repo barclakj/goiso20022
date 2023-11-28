@@ -14,34 +14,108 @@ type DataDictionary struct {
 }
 
 type TopLevelDictionaryEntry struct {
-	XsiType             string
-	XmiId               string
-	Name                string
-	Definition          string
-	RegistrationStatus  string
-	SubType             string
-	DerivationComponent string
-	AssociationDomain   string
-	DerivationElement   string
-	ListOfElement       []Element
+	XsiType              string
+	XmiId                string
+	Name                 string
+	Definition           string
+	RegistrationStatus   string
+	SubType              string
+	DerivationComponent  string
+	AssociationDomain    string
+	DerivationElement    string
+	ListOfElement        []Element
+	ListOfMessageElement []MessageElement
+	ListOfSemanticMarkup []SemanticMarkup
+}
+
+type MessageBuildingBlock struct {
+	XmiId                string
+	NextVersions         string
+	PreviousVersion      string
+	Name                 string
+	Definition           string
+	RegistrationStatus   string
+	MinOccurs            int
+	MaxOccurs            int
+	XmlTag               string
+	ComplexType          string
+	ListOfSemanticMarkup []SemanticMarkup
+}
+
+type MessageDefinition struct {
+	XmiId                      string
+	PreviousVersion            string
+	Name                       string
+	Definition                 string
+	RegistrationStatus         string
+	MessageSet                 string
+	XmlTag                     string
+	RootElement                string
+	ListOfMessageBuildingBlock []MessageBuildingBlock
+	ListOfSemanticMarkup       []SemanticMarkup
 }
 
 type Element struct {
-	XsiType            string
-	XmiId              string
-	Name               string
-	Definition         string
-	RegistrationStatus string
-	MinOccurs          int
-	MaxOccurs          int
-	IsDerived          bool
-	Derivation         string
-	Opposite           string
-	Type               string
-	SimpleType         string
+	XsiType              string
+	XmiId                string
+	Name                 string
+	Definition           string
+	RegistrationStatus   string
+	MinOccurs            int
+	MaxOccurs            int
+	IsDerived            bool
+	Derivation           string
+	Opposite             string
+	Type                 string
+	SimpleType           string
+	ListOfSemanticMarkup []SemanticMarkup
+}
+
+type MessageElement struct {
+	XsiType              string
+	XmiId                string
+	Name                 string
+	Definition           string
+	RegistrationStatus   string
+	MinOccurs            int
+	MaxOccurs            int
+	IsDerived            bool
+	ComplexType          string
+	BusinessElementTrace string
+	XmlTag               string
+	ListOfSemanticMarkup []SemanticMarkup
 }
 
 type BusinessProcessCatalogue struct {
+	ListOfTopLevelCatalogueEntries []TopLevelCatalogueEntry
+}
+
+type TopLevelCatalogueEntry struct {
+	XsiType                 string
+	XmiId                   string
+	Name                    string
+	Definition              string
+	RegistrationStatus      string
+	ListOfMessageDefinition []MessageDefinition
+	ListOfBusinessRoles     []BusinessRole
+}
+type BusinessRole struct {
+	XmiId                string
+	Name                 string
+	Definition           string
+	RegistrationStatus   string
+	ListOfSemanticMarkup []SemanticMarkup
+}
+type SemanticMarkup struct {
+	XmiId          string
+	Type           string
+	ListOfElements []Elements
+}
+
+type Elements struct {
+	XmiId string
+	Name  string
+	Value string
 }
 
 func PrintElementAttributes(element *Element) {
