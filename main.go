@@ -1,9 +1,15 @@
-package iso20022
+package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"regexp"
+
+	"realizr.io/iso20022/server" // This is a local package
+
+	"realizr.io/iso20022/model"
+	"realizr.io/iso20022/repo"
 )
 
 type Payment struct {
@@ -51,4 +57,23 @@ func HandleReferredDocumentInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Send a response back
 	w.WriteHeader(http.StatusOK)
+}
+
+func main() {
+	iso := loadModel()
+	log.Printf("Loaded model with %d top level dictionary entries", len(iso.DataDictionary.ListOfTopLevelDictionaryEntry))
+	// Start the web server
+	server.RunWebServer(iso)
+}
+
+func loadModel() *model.Iso20022 {
+	filePath := "schema/20230719_ISO20022_2013_eRepository.iso20022"
+
+	// Call the function being tested
+	iso20022model, err := repo.ReadXMLFile(filePath)
+	if err != nil {
+		log.Fatalf("Error reading XML file: %v", err)
+		panic(err)
+	}
+	return iso20022model
 }

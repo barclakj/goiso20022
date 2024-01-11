@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,4 +19,23 @@ func TestReadXMLFile(t *testing.T) {
 
 	assert.NotNil(t, iso20022model)
 
+	// Loop through toplevelcatalogueentries
+	for _, entry := range iso20022model.BusinessProcessCatalogue.ListOfTopLevelCatalogueEntries {
+		// Process each entry
+		// ...
+		assert.NotNil(t, entry.Name)
+		if *entry.Name == "Organisation31" {
+			fmt.Printf("ProcessCatalogue: %v = %v\n", entry.Name, entry.Definition)
+		}
+	}
+
+	el := ExpandElement("OrganisationModification2", iso20022model, nil)
+	assert.NotNil(t, el)
+	fmt.Printf("Element: %v = %v\n", *el.Name, *el.Description)
+
+	// Iterate over el children and print each child
+	for _, child := range el.Children {
+		fmt.Printf("Child: %v - %v\n", *child.Name, *child.Description)
+	}
+	assert.Equal(t, "OrganisationModification2", *el.Name)
 }
