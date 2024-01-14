@@ -26,10 +26,12 @@ func loadModel() *model.Iso20022 {
 
 func init() {
 	functions.HTTP("ISO20022", ISO20022)
-	isoModel = loadModel()
 }
 
 func ISO20022(w http.ResponseWriter, r *http.Request) {
+	if isoModel == nil {
+		isoModel = loadModel()
+	}
 	log.Printf(r.URL.Path)
 
 	if r.Method == "GET" {
