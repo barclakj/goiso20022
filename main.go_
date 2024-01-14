@@ -60,6 +60,7 @@ func HandleReferredDocumentInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.Println("Starting server...")
 	iso := loadModel()
 	log.Printf("Loaded model with %d top level dictionary entries", len(iso.DataDictionary.ListOfTopLevelDictionaryEntry))
 	// Start the web server
@@ -67,10 +68,10 @@ func main() {
 }
 
 func loadModel() *model.Iso20022 {
-	filePath := "schema/20230719_ISO20022_2013_eRepository.iso20022"
+	url := "https://storage.googleapis.com/media.nonfunctionalarchitect.com/20230719_ISO20022_2013_eRepository.iso20022"
 
 	// Call the function being tested
-	iso20022model, err := repo.ReadXMLFile(filePath)
+	iso20022model, err := repo.ReadXMLFile(url)
 	if err != nil {
 		log.Fatalf("Error reading XML file: %v", err)
 		panic(err)

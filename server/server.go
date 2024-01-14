@@ -19,7 +19,7 @@ func RunWebServer(model *model.Iso20022) {
 		id := r.URL.Query().Get("id")
 		element := repo.ExpandElement(id, model, nil)
 		if element != nil {
-			json, err := getJSONRepresentation(element)
+			json, err := GetJSONRepresentation(element)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -37,7 +37,7 @@ func RunWebServer(model *model.Iso20022) {
 	log.Fatal(http.ListenAndServe(port, nil))
 }
 
-func getJSONRepresentation(element *repo.Element) (string, error) {
+func GetJSONRepresentation(element *repo.Element) (string, error) {
 	if element == nil {
 		return "", nil
 	}

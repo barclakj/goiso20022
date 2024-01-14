@@ -4,7 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"os"
+	"log"
+	"net/http"
 
 	"realizr.io/iso20022/model"
 )
@@ -14,16 +15,28 @@ type Element struct {
 	Description *string    `json:"description"`
 	Children    []*Element `json:"children"`
 	Type        *string    `json:"type"`
+	Required    bool       `json:"required"`
 }
 
-func ReadXMLFile(filePath string) (*model.Iso20022, error) {
-	file, err := os.Open(filePath)
+func loadURL(url string) ([]byte, error) {
+	log.Printf("Loading %v\n", url)
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer resp.Body.Close()
 
-	data, err := ioutil.ReadFile(filePath)
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Read %v bytes from %v\n", len(data), url)
+
+	return data, nil
+}
+
+func ReadXMLFile(filePath string) (*model.Iso20022, error) {
+	data, err := loadURL(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -45,27 +58,32 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		// Process each entry
 		// ...
 		if *entry.XmiId == identifier || *entry.Name == identifier {
-			element = &Element{entry.Name, entry.Definition, []*Element{}, nil}
+			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false}
 			if parent != nil {
 				parent.Children = append(parent.Children, element)
 			}
 			// Loop through elements
 			for _, child := range entry.ListOfMessageElement {
+				var childElement *Element
 				// Process each element
 				if child.SimpleType != nil {
 					c := ExpandElement(*child.SimpleType, model, nil)
-
-					childElement := &Element{child.Name, child.Definition, []*Element{}, c.Name}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, c.Name, false}
 					element.Children = append(element.Children, childElement)
 				}
 				if child.ComplexType != nil {
 					complexElement := ExpandElement(*child.ComplexType, model, nil)
-					childElement := &Element{child.Name, child.Definition, []*Element{}, complexElement.Name}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false}
 					childElement.Children = append(childElement.Children, childElement)
 					childElement.Children = append(childElement.Children, complexElement)
 				}
 				if child.Type != nil {
-					ExpandElement(*child.Type, model, element)
+					childElement = ExpandElement(*child.Type, model, element)
+				}
+				if childElement != nil {
+					if child.MinOccurs != nil && *child.MinOccurs > 0 {
+						childElement.Required = true
+					}
 				}
 			}
 		}

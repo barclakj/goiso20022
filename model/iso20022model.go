@@ -59,8 +59,8 @@ type MessageBuildingBlock struct {
 	Name                 *string           `xml:"name,attr"`
 	Definition           *string           `xml:"definition,attr"`
 	RegistrationStatus   *string           `xml:"registrationStatus,attr"`
-	MinOccurs            int               `xml:"minOccurs,attr"`
-	MaxOccurs            int               `xml:"maxOccurs,attr"`
+	MinOccurs            *int              `xml:"minOccurs,attr"`
+	MaxOccurs            *int              `xml:"maxOccurs,attr"`
 	XmlTag               *string           `xml:"xmlTag,attr"`
 	ComplexType          *string           `xml:"complexType,attr"`
 	ListOfSemanticMarkup []*SemanticMarkup `xml:"semanticMarkup"`
@@ -88,9 +88,9 @@ type Element struct {
 	Name                 *string           `xml:"name,attr"`
 	Definition           *string           `xml:"definition,attr"`
 	RegistrationStatus   *string           `xml:"registrationStatus,attr"`
-	MinOccurs            int               `xml:"minOccurs,attr"`
-	MaxOccurs            int               `xml:"maxOccurs,attr"`
-	IsDerived            bool              `xml:"isDerived,attr"`
+	MinOccurs            *int              `xml:"minOccurs,attr"`
+	MaxOccurs            *int              `xml:"maxOccurs,attr"`
+	IsDerived            *bool             `xml:"isDerived,attr"`
 	Derivation           *string           `xml:"derivation,attr"`
 	Opposite             *string           `xml:"opposite,attr"`
 	Type                 *string           `xml:"type,attr"`
@@ -105,9 +105,9 @@ type MessageElement struct {
 	Name                 *string           `xml:"name,attr"`
 	Definition           *string           `xml:"definition,attr"`
 	RegistrationStatus   *string           `xml:"registrationStatus,attr"`
-	MinOccurs            int               `xml:"minOccurs,attr"`
-	MaxOccurs            int               `xml:"maxOccurs,attr"`
-	IsDerived            bool              `xml:"isDerived,attr"`
+	MinOccurs            *int              `xml:"minOccurs,attr"`
+	MaxOccurs            *int              `xml:"maxOccurs,attr"`
+	IsDerived            *bool             `xml:"isDerived,attr"`
 	ComplexType          *string           `xml:"complexType,attr"`
 	SimpleType           *string           `xml:"simpleType,attr"`
 	Type                 *string           `xml:"type,attr"`
