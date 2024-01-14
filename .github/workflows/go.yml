@@ -43,6 +43,6 @@ jobs:
         name: 'ISO20022'
         runtime: 'go120'
         region: 'europe-west1'
-        memory_mb: '256'
+        memory_mb: '512'
         min_instances: 0
         max_instances: 1
