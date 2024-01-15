@@ -16,7 +16,14 @@ type Element struct {
 	Type        *string    `json:"type"`
 	Required    bool       `json:"required"`
 	Attribute   bool       `json:"attribute"`
+	MaxLength   *int       `json:"maxLength"`
+	MinLength   *int       `json:"minLength"`
+	MinValue    *float64   `json:"minValue"`
+	Pattern     *string    `json:"pattern"`
 }
+
+var complex = "complex"
+var simple = "simple"
 
 func loadURL(url string) ([]byte, error) {
 	log.Printf("Loading %v\n", url)
@@ -58,25 +65,29 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		// Process each entry
 		// ...
 		if *entry.XmiId == identifier || *entry.Name == identifier {
-			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false}
+			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil}
 			if parent != nil {
 				parent.Children = append(parent.Children, element)
 			}
+
 			// Loop through elements
 			for _, child := range entry.ListOfMessageElement {
 				var childElement *Element
 				// Process each element
 				if child.SimpleType != nil {
-					c := ExpandElement(*child.SimpleType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, c.Name, false, false}
+					simpleElement := ExpandElement(*child.SimpleType, model, nil)
+					childElement = &Element{child.Name, child.Definition, []*Element{}, simpleElement.Type, false, false, simpleElement.MaxLength, simpleElement.MinLength, simpleElement.MinValue, simpleElement.Pattern}
 					element.Children = append(element.Children, childElement)
 				} else if child.ComplexType != nil {
 					complexElement := ExpandElement(*child.ComplexType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false, false}
-					childElement.Children = append(childElement.Children, childElement)
-					childElement.Children = append(childElement.Children, complexElement)
+					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil}
+					childElement.Children = append(childElement.Children, complexElement.Children...)
+					element.Children = append(element.Children, childElement)
 				} else if child.Type != nil {
-					childElement = ExpandElement(*child.Type, model, element)
+					otherElement := ExpandElement(*child.Type, model, nil)
+					childElement = &Element{child.Name, child.Definition, []*Element{}, otherElement.Name, false, false, nil, nil, nil, nil}
+					childElement.Children = append(childElement.Children, otherElement.Children...)
+					element.Children = append(element.Children, childElement)
 				}
 
 				if childElement != nil {
@@ -87,6 +98,29 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 						childElement.Attribute = true
 					}
 				}
+			}
+			if entry.MinInclusive != nil {
+				element.MinValue = entry.MinInclusive
+			}
+			if entry.TotalDigits != nil && (entry.FractionDigits == nil || *entry.FractionDigits == 0) {
+				var tp = "integer"
+				element.Type = &tp
+				element.MaxLength = entry.TotalDigits
+			} else if entry.TotalDigits != nil {
+				var tp = "double"
+				element.Type = &tp
+				element.MaxLength = entry.TotalDigits
+			} else if entry.MinLength != nil {
+				var tp = "string"
+				element.Type = &tp
+				element.MaxLength = entry.MaxLength
+				element.MinLength = entry.MinLength
+			} else if entry.Pattern != nil {
+				var tp = "string"
+				element.Type = &tp
+				element.Pattern = entry.Pattern
+			} else {
+				element.Type = entry.Name
 			}
 		}
 		if element != nil {
@@ -104,7 +138,7 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 }
 
 func FilterMandatoryElements(entry *Element) *Element {
-	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute}
+	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute, entry.MaxLength, entry.MinLength, entry.MinValue, entry.Pattern}
 	for _, child := range entry.Children {
 		if child.Required {
 			mandatoryChild := FilterMandatoryElements(child)

@@ -35,6 +35,12 @@ type TopLevelDictionaryEntry struct {
 	ListOfXors           []*Xors           `xml:"xors"`
 	ListOfExamples       []*Example        `xml:"example"`
 	ListOfNamespaceList  []*NamespaceList  `xml:"namespaceList"`
+	MinInclusive         *float64          `xml:"minInclusive,attr"`
+	TotalDigits          *int              `xml:"totalDigits,attr"`
+	FractionDigits       *int              `xml:"fractionDigits,attr"`
+	MinLength            *int              `xml:"minLength,attr"`
+	MaxLength            *int              `xml:"maxLength,attr"`
+	Pattern              *string           `xml:"pattern,attr"`
 }
 
 type Example struct {
