@@ -39,6 +39,10 @@ func ISO20022(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		id := r.URL.Query().Get("id")
+		if id == "" {
+			listCatalogue(w, r, isoModel)
+			return
+		}
 		reqd := r.URL.Query().Get("reqd")
 		element := repo.ExpandElement(id, isoModel, nil)
 		if element == nil {
@@ -61,5 +65,18 @@ func ISO20022(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
+	}
+}
+
+func listCatalogue(w http.ResponseWriter, r *http.Request, model *model.Iso20022) {
+	catalogue := repo.ListCatalogue(model)
+	json, err := server.GetCatalogueJSONRepresentation(catalogue)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else {
+		server.AddDefaultHeaders(w, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(json))
 	}
 }

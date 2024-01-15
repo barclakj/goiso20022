@@ -63,9 +63,33 @@ func TestReadXMLFile(t *testing.T) {
 	}
 
 	testCatalogue(t, iso20022model)
+
+	listCatalogue(t, iso20022model)
 }
 
 func testCatalogue(t *testing.T, model *model.Iso20022) {
 	catalogue := ExpandCatalogue("CustomerCreditTransferInitiationV02", model)
 	assert.NotNil(t, catalogue)
+}
+
+func listCatalogue(t *testing.T, model *model.Iso20022) {
+	catalogueEntries := ListCatalogue(model)
+	assert.NotNil(t, catalogueEntries)
+	assert.True(t, len(*catalogueEntries) > 0)
+	for _, entry := range *catalogueEntries {
+		assert.NotNil(t, entry.Name)
+		fmt.Printf("Name: %v\n", *entry.Name)
+		if entry.Description != nil {
+			fmt.Printf("Description: %v\n", *entry.Description)
+		}
+		assert.NotNil(t, entry.MessageName)
+		fmt.Printf("MessageName: %v\n", *entry.MessageName)
+		if entry.MessageDefinition != nil {
+			fmt.Printf("MessageDefinition: %v\n", *entry.MessageDefinition)
+		}
+		assert.NotNil(t, entry.FunctionalArea)
+		fmt.Printf("FunctionalArea: %v\n", *entry.FunctionalArea)
+		assert.NotNil(t, entry.Domain)
+		fmt.Printf("Domain: %v\n", *entry.Domain)
+	}
 }

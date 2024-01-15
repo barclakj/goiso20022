@@ -20,6 +20,16 @@ type Element struct {
 	MinLength   *int       `json:"minLength"`
 	MinValue    *float64   `json:"minValue"`
 	Pattern     *string    `json:"pattern"`
+	MaxOccurs   *int       `json:"maxOccurs"`
+}
+
+type CatalogueEntry struct {
+	Name              *string `json:"name"`
+	Description       *string `json:"description"`
+	MessageName       *string `json:"messageName"`
+	MessageDefinition *string `json:"messageDefinition"`
+	Domain            *string `json:"domain"`
+	FunctionalArea    *string `json:"functionalArea"`
 }
 
 var complex = "complex"
@@ -65,7 +75,7 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		// Process each entry
 		// ...
 		if *entry.XmiId == identifier || *entry.Name == identifier {
-			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil}
+			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil, nil}
 			if parent != nil {
 				parent.Children = append(parent.Children, element)
 			}
@@ -76,16 +86,16 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 				// Process each element
 				if child.SimpleType != nil {
 					simpleElement := ExpandElement(*child.SimpleType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, simpleElement.Type, false, false, simpleElement.MaxLength, simpleElement.MinLength, simpleElement.MinValue, simpleElement.Pattern}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, simpleElement.Type, false, false, simpleElement.MaxLength, simpleElement.MinLength, simpleElement.MinValue, simpleElement.Pattern, nil}
 					element.Children = append(element.Children, childElement)
 				} else if child.ComplexType != nil {
 					complexElement := ExpandElement(*child.ComplexType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil, nil}
 					childElement.Children = append(childElement.Children, complexElement.Children...)
 					element.Children = append(element.Children, childElement)
 				} else if child.Type != nil {
 					otherElement := ExpandElement(*child.Type, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, otherElement.Name, false, false, nil, nil, nil, nil}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, otherElement.Name, false, false, nil, nil, nil, nil, nil}
 					childElement.Children = append(childElement.Children, otherElement.Children...)
 					element.Children = append(element.Children, childElement)
 				}
@@ -144,23 +154,50 @@ func ExpandCatalogue(identifier string, model *model.Iso20022) *Element {
 	for _, entry := range model.BusinessProcessCatalogue.ListOfTopLevelCatalogueEntries {
 		for _, messageDefinitionChild := range entry.ListOfMessageDefinition {
 			if *messageDefinitionChild.Name == identifier {
-				element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil}
+				element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil, nil}
 
 				for _, buildingBlock := range messageDefinitionChild.ListOfMessageBuildingBlock {
 					if buildingBlock.ComplexType != nil {
 						complexElement := ExpandElement(*buildingBlock.ComplexType, model, nil)
-						element = &Element{buildingBlock.Name, buildingBlock.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil}
-						element.Children = append(element.Children, complexElement.Children...)
+						subElement := &Element{buildingBlock.Name, buildingBlock.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil, nil}
+						subElement.Children = append(subElement.Children, complexElement.Children...)
+						if buildingBlock.MinOccurs != nil && *buildingBlock.MinOccurs > 0 {
+							element.Required = true
+						}
+						if buildingBlock.MaxOccurs != nil {
+							element.MaxOccurs = buildingBlock.MaxOccurs
+						}
+						element.Children = append(element.Children, subElement)
 					}
 				}
+			}
+			if element != nil {
+				break
 			}
 		}
 	}
 	return element
 }
 
+func ListCatalogue(model *model.Iso20022) *[]CatalogueEntry {
+	var elements []CatalogueEntry
+	for _, catEntry := range model.BusinessProcessCatalogue.ListOfTopLevelCatalogueEntries {
+		for _, messageDefinitionChild := range catEntry.ListOfMessageDefinition {
+			if messageDefinitionChild.ListOfMessageDefinitionIdentifier != nil {
+				entry := CatalogueEntry{catEntry.Name, catEntry.Definition, messageDefinitionChild.Name, messageDefinitionChild.Definition, nil, nil}
+				for _, messageDefinitionIdentifier := range messageDefinitionChild.ListOfMessageDefinitionIdentifier {
+					entry.Domain = messageDefinitionIdentifier.BusinessArea
+					entry.FunctionalArea = messageDefinitionIdentifier.MessageFunctionality
+				}
+				elements = append(elements, entry)
+			}
+		}
+	}
+	return &elements
+}
+
 func FilterMandatoryElements(entry *Element) *Element {
-	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute, entry.MaxLength, entry.MinLength, entry.MinValue, entry.Pattern}
+	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute, entry.MaxLength, entry.MinLength, entry.MinValue, entry.Pattern, nil}
 	for _, child := range entry.Children {
 		if child.Required {
 			mandatoryChild := FilterMandatoryElements(child)

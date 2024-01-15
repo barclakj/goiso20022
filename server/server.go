@@ -23,6 +23,19 @@ func GetJSONRepresentation(element *repo.Element) (string, error) {
 	return string(jsonBytes), nil
 }
 
+func GetCatalogueJSONRepresentation(catalogues *[]repo.CatalogueEntry) (string, error) {
+	if catalogues == nil {
+		return "", nil
+	}
+
+	jsonBytes, err := json.Marshal(catalogues)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonBytes), nil
+}
+
 func outputElement(element *repo.Element, buffer *bytes.Buffer) {
 	if element != nil {
 		buffer.WriteString("<div>" + *element.Name + " - " + *element.Description)
