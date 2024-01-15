@@ -70,6 +70,15 @@ func ISO20022(w http.ResponseWriter, r *http.Request) {
 
 func listCatalogue(w http.ResponseWriter, r *http.Request, model *model.Iso20022) {
 	catalogue := repo.ListCatalogue(model)
+	domain := r.URL.Query().Get("domain")
+	latestString := r.URL.Query().Get("latest")
+	latest := false
+	if latestString == "true" {
+		latest = true
+	}
+	if domain != "" {
+		catalogue = repo.FilterCatalogueByDomain(catalogue, domain, latest)
+	}
 	json, err := server.GetCatalogueJSONRepresentation(catalogue)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"realizr.io/iso20022/model"
 )
@@ -190,6 +191,22 @@ func ListCatalogue(model *model.Iso20022) *[]CatalogueEntry {
 					entry.FunctionalArea = messageDefinitionIdentifier.MessageFunctionality
 				}
 				elements = append(elements, entry)
+			}
+		}
+	}
+	return &elements
+}
+
+func FilterCatalogueByDomain(catalogue *[]CatalogueEntry, domain string, latest bool) *[]CatalogueEntry {
+	var elements []CatalogueEntry
+	for _, catEntry := range *catalogue {
+		if catEntry.Domain != nil && *catEntry.Domain == domain {
+			if latest {
+				if catEntry.Name != nil && strings.Contains(*catEntry.Name, "Latest version") {
+					elements = append(elements, catEntry)
+				}
+			} else {
+				elements = append(elements, catEntry)
 			}
 		}
 	}
