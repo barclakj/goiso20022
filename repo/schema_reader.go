@@ -137,6 +137,28 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 	return element
 }
 
+func ExpandCatalogue(identifier string, model *model.Iso20022) *Element {
+	var element *Element
+
+	// Loop through toplevelcatalogueentries
+	for _, entry := range model.BusinessProcessCatalogue.ListOfTopLevelCatalogueEntries {
+		for _, messageDefinitionChild := range entry.ListOfMessageDefinition {
+			if *messageDefinitionChild.Name == identifier {
+				element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil}
+
+				for _, buildingBlock := range messageDefinitionChild.ListOfMessageBuildingBlock {
+					if buildingBlock.ComplexType != nil {
+						complexElement := ExpandElement(*buildingBlock.ComplexType, model, nil)
+						element = &Element{buildingBlock.Name, buildingBlock.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil}
+						element.Children = append(element.Children, complexElement.Children...)
+					}
+				}
+			}
+		}
+	}
+	return element
+}
+
 func FilterMandatoryElements(entry *Element) *Element {
 	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute, entry.MaxLength, entry.MinLength, entry.MinValue, entry.Pattern}
 	for _, child := range entry.Children {

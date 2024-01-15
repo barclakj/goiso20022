@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"realizr.io/iso20022/model"
 )
 
 func TestReadXMLFile(t *testing.T) {
@@ -60,4 +61,11 @@ func TestReadXMLFile(t *testing.T) {
 			assert.Equal(t, "double", *child.Type)
 		}
 	}
+
+	testCatalogue(t, iso20022model)
+}
+
+func testCatalogue(t *testing.T, model *model.Iso20022) {
+	catalogue := ExpandCatalogue("CustomerCreditTransferInitiationV02", model)
+	assert.NotNil(t, catalogue)
 }
