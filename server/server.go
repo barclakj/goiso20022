@@ -1,41 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"log"
 	"net/http"
 
-	"bytes"
-
-	"realizr.io/iso20022/model"
 	"realizr.io/iso20022/repo"
 
 	"encoding/json"
 )
-
-func RunWebServer(model *model.Iso20022) {
-	port := ":8080"
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		id := r.URL.Query().Get("id")
-		element := repo.ExpandElement(id, model, nil)
-		if element != nil {
-			json, err := GetJSONRepresentation(element)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			} else {
-				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(json))
-			}
-		} else {
-			http.Error(w, "Not found", http.StatusNotFound)
-			return
-		}
-	})
-
-	log.Printf("Server listening on port %s", port)
-	log.Fatal(http.ListenAndServe(port, nil))
-}
 
 func GetJSONRepresentation(element *repo.Element) (string, error) {
 	if element == nil {
@@ -58,4 +31,24 @@ func outputElement(element *repo.Element, buffer *bytes.Buffer) {
 		}
 		buffer.WriteString("</div>")
 	}
+}
+
+func AddDefaultHeaders(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		origin = "*"
+	}
+	w.Header().Add("Access-Control-Allow-Origin", origin)
+	w.Header().Add("Access-Control-Allow-Credentials", "true")
+	w.Header().Add("Access-Control-Allow-Methods", "GET,OPTIONS,PUT,POST,DELETE")
+	w.Header().Add("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Authorization, ")
+	w.Header().Add("Permissions-Policy", "interest-cohort=()")
+	w.Header().Add("Cache-Control", "no-store, max-age=0")
+}
+
+func Options(w http.ResponseWriter, r *http.Request) {
+	AddDefaultHeaders(w, r)
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	log.Default().Println(r.Method, " ", r.URL.Path, " ", 200)
 }

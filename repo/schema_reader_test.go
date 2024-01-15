@@ -35,7 +35,16 @@ func TestReadXMLFile(t *testing.T) {
 
 	// Iterate over el children and print each child
 	for _, child := range el.Children {
-		fmt.Printf("Child: %v - %v\n", *child.Name, *child.Description)
+		fmt.Printf("Child: %v - %v - %v\n", *child.Name, *child.Description, *&child.Required)
 	}
 	assert.Equal(t, "OrganisationModification2", *el.Name)
+
+	el = ExpandElement("CardPaymentTransaction53", iso20022model, nil)
+	mandatoryEl := FilterMandatoryElements(el)
+	assert.NotNil(t, mandatoryEl)
+	assert.True(t, len(mandatoryEl.Children) > 0)
+	for _, child := range mandatoryEl.Children {
+		assert.True(t, child.Required)
+		fmt.Printf("Mandatory Child: %v - %v - %v\n", *child.Name, *child.Description, *&child.Required)
+	}
 }

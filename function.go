@@ -32,15 +32,25 @@ func init() {
 func ISO20022(w http.ResponseWriter, r *http.Request) {
 	log.Printf(r.URL.Path)
 
+	if r.Method == "OPTIONS" {
+		server.Options(w, r)
+		return
+	}
+
 	if r.Method == "GET" {
 		id := r.URL.Query().Get("id")
+		reqd := r.URL.Query().Get("reqd")
 		element := repo.ExpandElement(id, isoModel, nil)
 		if element != nil {
+			if reqd == "true" {
+				element = repo.FilterMandatoryElements(element)
+			}
 			json, err := server.GetJSONRepresentation(element)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			} else {
+				server.AddDefaultHeaders(w, r)
 				w.Header().Set("Content-Type", "application/json")
 				w.Write([]byte(json))
 			}

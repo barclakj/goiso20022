@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +15,7 @@ type Element struct {
 	Children    []*Element `json:"children"`
 	Type        *string    `json:"type"`
 	Required    bool       `json:"required"`
+	Attribute   bool       `json:"attribute"`
 }
 
 func loadURL(url string) ([]byte, error) {
@@ -58,7 +58,7 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		// Process each entry
 		// ...
 		if *entry.XmiId == identifier || *entry.Name == identifier {
-			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false}
+			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false}
 			if parent != nil {
 				parent.Children = append(parent.Children, element)
 			}
@@ -68,21 +68,23 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 				// Process each element
 				if child.SimpleType != nil {
 					c := ExpandElement(*child.SimpleType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, c.Name, false}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, c.Name, false, false}
 					element.Children = append(element.Children, childElement)
-				}
-				if child.ComplexType != nil {
+				} else if child.ComplexType != nil {
 					complexElement := ExpandElement(*child.ComplexType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false}
+					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false, false}
 					childElement.Children = append(childElement.Children, childElement)
 					childElement.Children = append(childElement.Children, complexElement)
-				}
-				if child.Type != nil {
+				} else if child.Type != nil {
 					childElement = ExpandElement(*child.Type, model, element)
 				}
+
 				if childElement != nil {
 					if child.MinOccurs != nil && *child.MinOccurs > 0 {
 						childElement.Required = true
+					}
+					if child.Type != nil && *child.Type == "iso20022:MessageAttribute" {
+						childElement.Attribute = true
 					}
 				}
 			}
@@ -92,7 +94,18 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		}
 	}
 	if element == nil {
-		fmt.Printf("Element %v not found\n", identifier)
+		log.Printf("Element %v not found in %v\n", identifier, *parent.Name)
+	}
+	return element
+}
+
+func FilterMandatoryElements(entry *Element) *Element {
+	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute}
+	for _, child := range entry.Children {
+		if child.Required {
+			mandatoryChild := FilterMandatoryElements(child)
+			element.Children = append(element.Children, mandatoryChild)
+		}
 	}
 	return element
 }
