@@ -94,7 +94,11 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		}
 	}
 	if element == nil {
-		log.Printf("Element %v not found in %v\n", identifier, *parent.Name)
+		if parent != nil {
+			log.Printf("Element %v not found in %v\n", identifier, *parent.Name)
+		} else {
+			log.Printf("Element %v not found (nil parent)\n", identifier)
+		}
 	}
 	return element
 }
