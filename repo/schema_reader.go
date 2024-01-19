@@ -11,26 +11,26 @@ import (
 )
 
 type Element struct {
-	Name        *string    `json:"name"`
-	Description *string    `json:"description"`
-	Children    []*Element `json:"children"`
-	Type        *string    `json:"type"`
+	Name        *string    `json:"name,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Children    []*Element `json:"children,omitempty"`
+	Type        *string    `json:"type,omitempty"`
 	Required    bool       `json:"required"`
 	Attribute   bool       `json:"attribute"`
-	MaxLength   *int       `json:"maxLength"`
-	MinLength   *int       `json:"minLength"`
-	MinValue    *float64   `json:"minValue"`
-	Pattern     *string    `json:"pattern"`
-	MaxOccurs   *int       `json:"maxOccurs"`
+	MaxLength   *int       `json:"maxLength,omitempty"`
+	MinLength   *int       `json:"minLength,omitempty"`
+	MinValue    *float64   `json:"minValue,omitempty"`
+	Pattern     *string    `json:"pattern,omitempty"`
+	MaxOccurs   *int       `json:"maxOccurs,omitempty"`
 }
 
 type CatalogueEntry struct {
-	Name              *string `json:"name"`
-	Description       *string `json:"description"`
-	MessageName       *string `json:"messageName"`
-	MessageDefinition *string `json:"messageDefinition"`
-	Domain            *string `json:"domain"`
-	FunctionalArea    *string `json:"functionalArea"`
+	Name              *string `json:"name,omitempty"`
+	Description       *string `json:"description,omitempty"`
+	MessageName       *string `json:"messageName,omitempty"`
+	MessageDefinition *string `json:"messageDefinition,omitempty"`
+	Domain            *string `json:"domain,omitempty"`
+	FunctionalArea    *string `json:"functionalArea,omitempty"`
 }
 
 var complex = "complex"
@@ -76,7 +76,7 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 		// Process each entry
 		// ...
 		if *entry.XmiId == identifier || *entry.Name == identifier {
-			element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil, nil}
+			element = &Element{entry.Name, substNewLines(entry.Definition), []*Element{}, nil, false, false, nil, nil, nil, nil, nil}
 			if parent != nil {
 				parent.Children = append(parent.Children, element)
 			}
@@ -87,16 +87,16 @@ func ExpandElement(identifier string, model *model.Iso20022, parent *Element) *E
 				// Process each element
 				if child.SimpleType != nil {
 					simpleElement := ExpandElement(*child.SimpleType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, simpleElement.Type, false, false, simpleElement.MaxLength, simpleElement.MinLength, simpleElement.MinValue, simpleElement.Pattern, nil}
+					childElement = &Element{child.Name, substNewLines(child.Definition), []*Element{}, simpleElement.Type, false, false, simpleElement.MaxLength, simpleElement.MinLength, simpleElement.MinValue, simpleElement.Pattern, nil}
 					element.Children = append(element.Children, childElement)
 				} else if child.ComplexType != nil {
 					complexElement := ExpandElement(*child.ComplexType, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil, nil}
+					childElement = &Element{child.Name, substNewLines(child.Definition), []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil, nil}
 					childElement.Children = append(childElement.Children, complexElement.Children...)
 					element.Children = append(element.Children, childElement)
 				} else if child.Type != nil {
 					otherElement := ExpandElement(*child.Type, model, nil)
-					childElement = &Element{child.Name, child.Definition, []*Element{}, otherElement.Name, false, false, nil, nil, nil, nil, nil}
+					childElement = &Element{child.Name, substNewLines(child.Definition), []*Element{}, otherElement.Name, false, false, nil, nil, nil, nil, nil}
 					childElement.Children = append(childElement.Children, otherElement.Children...)
 					element.Children = append(element.Children, childElement)
 				}
@@ -155,12 +155,12 @@ func ExpandCatalogue(identifier string, model *model.Iso20022) *Element {
 	for _, entry := range model.BusinessProcessCatalogue.ListOfTopLevelCatalogueEntries {
 		for _, messageDefinitionChild := range entry.ListOfMessageDefinition {
 			if *messageDefinitionChild.Name == identifier {
-				element = &Element{entry.Name, entry.Definition, []*Element{}, nil, false, false, nil, nil, nil, nil, nil}
+				element = &Element{entry.Name, substNewLines(entry.Definition), []*Element{}, nil, false, false, nil, nil, nil, nil, nil}
 
 				for _, buildingBlock := range messageDefinitionChild.ListOfMessageBuildingBlock {
 					if buildingBlock.ComplexType != nil {
 						complexElement := ExpandElement(*buildingBlock.ComplexType, model, nil)
-						subElement := &Element{buildingBlock.Name, buildingBlock.Definition, []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil, nil}
+						subElement := &Element{buildingBlock.Name, substNewLines(buildingBlock.Definition), []*Element{}, complexElement.Name, false, false, nil, nil, nil, nil, nil}
 						subElement.Children = append(subElement.Children, complexElement.Children...)
 						if buildingBlock.MinOccurs != nil && *buildingBlock.MinOccurs > 0 {
 							element.Required = true
@@ -214,7 +214,7 @@ func FilterCatalogueByDomain(catalogue *[]CatalogueEntry, domain string, latest 
 }
 
 func FilterMandatoryElements(entry *Element) *Element {
-	var element = &Element{entry.Name, entry.Description, []*Element{}, entry.Type, entry.Required, entry.Attribute, entry.MaxLength, entry.MinLength, entry.MinValue, entry.Pattern, nil}
+	var element = &Element{entry.Name, substNewLines(entry.Description), []*Element{}, entry.Type, entry.Required, entry.Attribute, entry.MaxLength, entry.MinLength, entry.MinValue, entry.Pattern, nil}
 	for _, child := range entry.Children {
 		if child.Required {
 			mandatoryChild := FilterMandatoryElements(child)
@@ -222,4 +222,13 @@ func FilterMandatoryElements(entry *Element) *Element {
 		}
 	}
 	return element
+}
+
+func substNewLines(str *string) *string {
+	if str == nil {
+		return nil
+	}
+	str2 := strings.ReplaceAll(*str, "\r", "")
+	str2 = strings.ReplaceAll(str2, "\n", "<p/>")
+	return &str2
 }
