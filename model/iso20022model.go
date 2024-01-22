@@ -89,7 +89,7 @@ type MessageDefinition struct {
 }
 
 type Element struct {
-	XsiType              *string           `xml:"xsi:type,attr"`
+	XsiType              *string           `xml:"xsitype,attr"`
 	XmiId                *string           `xml:"id,attr"`
 	Name                 *string           `xml:"name,attr"`
 	Definition           *string           `xml:"definition,attr"`

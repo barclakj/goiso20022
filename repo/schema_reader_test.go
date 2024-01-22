@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,6 +66,38 @@ func TestReadXMLFile(t *testing.T) {
 	testCatalogue(t, iso20022model)
 
 	listCatalogue(t, iso20022model)
+
+	testMaxOccurs(t, iso20022model)
+
+	testNoLoop(t, iso20022model)
+}
+
+func testMaxOccurs(t *testing.T, mdl *model.Iso20022) {
+	postlAddress := ExpandElement("PostalAddress4", mdl, nil)
+	assert.NotNil(t, postlAddress)
+
+	// Find the AddressLine element
+	var addressLine *Element
+	for _, element := range postlAddress.Children {
+		if *element.Name == "AddressLine" {
+			addressLine = element
+			log.Default().Printf("Found Address Line: %v\n", *addressLine.Name)
+			log.Default().Printf("Found Max Occurs: %v\n", *addressLine.MaxOccurs)
+			log.Default().Printf("Found Required: %v\n", addressLine.Required)
+
+			break
+		}
+	}
+
+	// Verify the maxOccurs is 2
+	assert.NotNil(t, addressLine)
+	assert.Equal(t, 2, *addressLine.MaxOccurs)
+	assert.Equal(t, false, addressLine.Required)
+}
+
+func testNoLoop(t *testing.T, mdl *model.Iso20022) {
+	postlAddress := ExpandElement("PostalAddress", mdl, nil)
+	assert.NotNil(t, postlAddress)
 }
 
 func testCatalogue(t *testing.T, model *model.Iso20022) {
