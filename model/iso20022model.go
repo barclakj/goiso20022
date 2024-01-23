@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/xml"
 	"fmt"
+	"strings"
 )
 
 type Iso20022 struct {
@@ -89,8 +90,8 @@ type MessageDefinition struct {
 }
 
 type Element struct {
-	XsiType              *string           `xml:"xsitype,attr"`
-	XmiId                *string           `xml:"id,attr"`
+	XsiType              *string           `xml:"xsi:type,attr"`
+	XmiId                *string           `xml:"xmi:id,attr"`
 	Name                 *string           `xml:"name,attr"`
 	Definition           *string           `xml:"definition,attr"`
 	RegistrationStatus   *string           `xml:"registrationStatus,attr"`
@@ -107,7 +108,7 @@ type Element struct {
 
 type MessageElement struct {
 	XsiType              *string           `xml:"xsi:type,attr"`
-	XmiId                *string           `xml:"id,attr"`
+	XmiId                *string           `xml:"xmi:id,attr"`
 	Name                 *string           `xml:"name,attr"`
 	Definition           *string           `xml:"definition,attr"`
 	RegistrationStatus   *string           `xml:"registrationStatus,attr"`
@@ -190,16 +191,231 @@ type Xors struct {
 }
 
 func PrintElementAttributes(element *Element) {
-	fmt.Println("XsiType:", element.XsiType)
-	fmt.Println("XmiId:", element.XmiId)
-	fmt.Println("Name:", element.Name)
-	fmt.Println("Definition:", element.Definition)
-	fmt.Println("RegistrationStatus:", element.RegistrationStatus)
+	fmt.Println("XsiType:", val(element.XsiType))
+	fmt.Println("XmiId:", val(element.XmiId))
+	fmt.Println("Name:", val(element.Name))
+	fmt.Println("Definition:", val(element.Definition))
+	fmt.Println("RegistrationStatus:", val(element.RegistrationStatus))
 	fmt.Println("MinOccurs:", element.MinOccurs)
 	fmt.Println("MaxOccurs:", element.MaxOccurs)
 	fmt.Println("IsDerived:", element.IsDerived)
-	fmt.Println("Derivation:", element.Derivation)
-	fmt.Println("Opposite:", element.Opposite)
-	fmt.Println("Type:", element.Type)
-	fmt.Println("SimpleType:", element.SimpleType)
+	fmt.Println("Derivation:", val(element.Derivation))
+	fmt.Println("Opposite:", val(element.Opposite))
+	fmt.Println("Type:", val(element.Type))
+	fmt.Println("SimpleType:", val(element.SimpleType))
+}
+
+func val(str *string) string {
+	if str == nil {
+		return "<nil>"
+	} else {
+		return *str
+	}
+}
+
+type BasicElement struct {
+	Id          *string         `json:"id,omitempty"`
+	Name        *string         `json:"name,omitempty"`
+	Description *string         `json:"description,omitempty"`
+	Children    []*BasicElement `json:"children,omitempty"`
+	Type        *string         `json:"type,omitempty"`
+	Required    bool            `json:"required"`
+	Attribute   bool            `json:"-"`
+	MaxLength   *int            `json:"maxLength,omitempty"`
+	MinLength   *int            `json:"minLength,omitempty"`
+	MinValue    *float64        `json:"minValue,omitempty"`
+	Pattern     *string         `json:"pattern,omitempty"`
+	MaxOccurs   *int            `json:"maxOccurs,omitempty"`
+	MinOccurs   *int            `json:"minOccurs,omitempty"`
+	Array       bool            `json:"array"`
+}
+
+func (e *BasicElement) DuplicateNoChildren() *BasicElement {
+	var element *BasicElement
+
+	element = &BasicElement{
+		Id:          e.Id,
+		Name:        e.Name,
+		Description: e.Description,
+		Children:    []*BasicElement{},
+		Type:        e.Type,
+		Required:    e.Required,
+		Attribute:   e.Attribute,
+		MaxLength:   e.MaxLength,
+		MinLength:   e.MinLength,
+		MinValue:    e.MinValue,
+		Pattern:     e.Pattern,
+		MaxOccurs:   e.MaxOccurs,
+		MinOccurs:   e.MinOccurs,
+		Array:       e.Array,
+	}
+	element.Assess()
+
+	return element
+}
+
+func (e *BasicElement) AddChild(child *BasicElement) {
+	e.Children = append(e.Children, child)
+}
+
+func (entry *TopLevelDictionaryEntry) ToElement() *BasicElement {
+	var element *BasicElement
+
+	element = &BasicElement{
+		Id:          entry.XmiId,
+		Name:        entry.Name,
+		Description: substNewLines(entry.Definition),
+		Children:    []*BasicElement{},
+		Type:        nil,
+		Required:    false,
+		Attribute:   false,
+		MaxLength:   entry.MaxLength,
+		MinLength:   entry.MinLength,
+		MinValue:    entry.MinInclusive,
+		Pattern:     entry.Pattern,
+		MaxOccurs:   nil,
+		MinOccurs:   nil,
+		Array:       false,
+	}
+
+	if entry.TotalDigits != nil && (entry.FractionDigits == nil || *entry.FractionDigits == 0) {
+		var tp = "integer"
+		element.Type = &tp
+		element.MaxLength = entry.TotalDigits
+	} else if entry.TotalDigits != nil {
+		var tp = "double"
+		element.Type = &tp
+		element.MaxLength = entry.TotalDigits
+	} else if entry.MinLength != nil {
+		var tp = "string"
+		element.Type = &tp
+		element.MaxLength = entry.MaxLength
+		element.MinLength = entry.MinLength
+	} else if entry.Pattern != nil {
+		var tp = "string"
+		element.Type = &tp
+		element.Pattern = entry.Pattern
+	} else {
+		element.Type = entry.Name
+	}
+	element.Assess()
+
+	return element
+}
+
+func (e *MessageElement) ToElement() *BasicElement {
+	var element *BasicElement
+
+	element = &BasicElement{
+		Name:        e.Name,
+		Description: substNewLines(e.Definition),
+		Children:    []*BasicElement{},
+		Type:        nil,
+		Required:    false,
+		Attribute:   false,
+		MaxLength:   nil,
+		MinLength:   nil,
+		MinValue:    nil,
+		Pattern:     nil,
+		MaxOccurs:   e.MaxOccurs,
+		MinOccurs:   e.MinOccurs,
+		Array:       false,
+	}
+	if e.SimpleType != nil {
+		element.Id = e.SimpleType
+	} else if e.ComplexType != nil {
+		element.Id = e.ComplexType
+	} else if e.Type != nil {
+		element.Id = e.Type
+	}
+	element.Assess()
+
+	return element
+}
+
+func (e *Element) ToElement() *BasicElement {
+	var element *BasicElement
+
+	element = &BasicElement{
+		Id:          e.XmiId,
+		Name:        e.Name,
+		Description: substNewLines(e.Definition),
+		Children:    []*BasicElement{},
+		Type:        nil,
+		Required:    false,
+		Attribute:   false,
+		MaxLength:   nil,
+		MinLength:   nil,
+		MinValue:    nil,
+		Pattern:     nil,
+		MaxOccurs:   e.MaxOccurs,
+		MinOccurs:   e.MinOccurs,
+		Array:       false,
+	}
+	if e.SimpleType != nil {
+		element.Id = e.SimpleType
+	} else if e.ComplexType != nil {
+		element.Id = e.ComplexType
+	} else if e.Type != nil {
+		element.Id = e.Type
+	}
+	element.Assess()
+
+	return element
+}
+
+func (e *BasicElement) Assess() {
+	if e.MinOccurs != nil && *e.MinOccurs > 0 {
+		e.Required = true
+	}
+	if e.MaxOccurs != nil && *e.MaxOccurs > 1 {
+		e.Array = true
+	}
+	if e.MaxOccurs == nil {
+		e.Array = true
+	}
+}
+
+func substNewLines(str *string) *string {
+	if str == nil {
+		return nil
+	}
+	str2 := strings.ReplaceAll(*str, "\r", "")
+	str2 = strings.ReplaceAll(str2, "\n", "<p/>")
+	return &str2
+}
+
+type CatalogueEntry struct {
+	Name              *string `json:"name,omitempty"`
+	Description       *string `json:"description,omitempty"`
+	MessageName       *string `json:"messageName,omitempty"`
+	MessageDefinition *string `json:"messageDefinition,omitempty"`
+	Domain            *string `json:"domain,omitempty"`
+	FunctionalArea    *string `json:"functionalArea,omitempty"`
+}
+
+func (e *TopLevelCatalogueEntry) ToCatalogueEntries() []CatalogueEntry {
+	var entries []CatalogueEntry
+
+	for _, messageDefinition := range e.ListOfMessageDefinition {
+		if messageDefinition.ListOfMessageDefinitionIdentifier != nil {
+			for _, messageDefinitionIdentifier := range messageDefinition.ListOfMessageDefinitionIdentifier {
+				entry := &CatalogueEntry{
+					Name:              e.Name,
+					Description:       e.Definition,
+					MessageName:       nil,
+					MessageDefinition: nil,
+					Domain:            nil,
+					FunctionalArea:    nil,
+				}
+				entry.MessageName = messageDefinition.Name
+				entry.MessageDefinition = messageDefinition.Definition
+				entry.Domain = messageDefinitionIdentifier.BusinessArea
+				entry.FunctionalArea = messageDefinitionIdentifier.MessageFunctionality
+				entries = append(entries, *entry)
+			}
+		}
+	}
+
+	return entries
 }

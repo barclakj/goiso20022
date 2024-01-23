@@ -45,9 +45,6 @@ func ISO20022(w http.ResponseWriter, r *http.Request) {
 		}
 		reqd := r.URL.Query().Get("reqd")
 		element := repo.ExpandElement(id, isoModel, nil)
-		if element == nil {
-			element = repo.ExpandCatalogue(id, isoModel)
-		}
 		if element != nil {
 			if reqd == "true" {
 				element = repo.FilterMandatoryElements(element)

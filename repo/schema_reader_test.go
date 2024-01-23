@@ -3,22 +3,33 @@ package repo
 import (
 	"fmt"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"realizr.io/iso20022/model"
 )
 
-func TestReadXMLFile(t *testing.T) {
+func TestMain(m *testing.M) {
+	setup()
+	code := m.Run()
+	os.Exit(code)
+}
+
+var iso20022model *model.Iso20022
+
+func setup() {
 	filePath := "https://storage.googleapis.com/media.nonfunctionalarchitect.com/20230719_ISO20022_2013_eRepository.iso20022"
-
+	var err error
 	// Call the function being tested
-	iso20022model, err := ReadXMLFile(filePath)
-
+	iso20022model, err = ReadXMLFile(filePath)
 	if err != nil {
-		t.Errorf("Error reading XML file: %v", err)
+		log.Printf("Error reading XML file: %v", err)
+		iso20022model = nil
 	}
+}
 
+func TestReadXMLFile(t *testing.T) {
 	assert.NotNil(t, iso20022model)
 
 	// Loop through toplevelcatalogueentries
@@ -30,14 +41,17 @@ func TestReadXMLFile(t *testing.T) {
 			fmt.Printf("ProcessCatalogue: %v = %v\n", entry.Name, entry.Definition)
 		}
 	}
+}
 
+func TestExpandElement(t *testing.T) {
 	el := ExpandElement("OrganisationModification2", iso20022model, nil)
 	assert.NotNil(t, el)
 	fmt.Printf("Element: %v = %v\n", *el.Name, *el.Description)
 
 	// Iterate over el children and print each child
 	for _, child := range el.Children {
-		fmt.Printf("Child: %v - %v - %v\n", *child.Name, *child.Description, child.Required)
+		assert.NotNil(t, child.Name)
+		// fmt.Printf("Child: %v - %v - %v\n", *child.Name, *child.Description, child.Required)
 	}
 	assert.Equal(t, "OrganisationModification2", *el.Name)
 
@@ -47,7 +61,7 @@ func TestReadXMLFile(t *testing.T) {
 	assert.True(t, len(mandatoryEl.Children) > 0)
 	for _, child := range mandatoryEl.Children {
 		assert.True(t, child.Required)
-		fmt.Printf("Mandatory Child: %v - %v - %v\n", *child.Name, *child.Description, child.Required)
+		// fmt.Printf("Mandatory Child: %v - %v - %v\n", *child.Name, *child.Description, child.Required)
 	}
 
 	fmt.Printf("Fetching element CardPaymentTransactionDetails42 for underlying type testing\n")
@@ -57,33 +71,27 @@ func TestReadXMLFile(t *testing.T) {
 	assert.True(t, len(el.Children) > 0)
 	for _, child := range el.Children {
 		assert.True(t, child.Required)
-		fmt.Printf("Mandatory Child: %v - %v - %v\n", *child.Name, *child.Description, *child.Type)
+		// fmt.Printf("Mandatory Child: %v - %v - %v\n", *child.Name, *child.Description, *child.Type)
 		if *child.Name == "TotalAmount" {
 			assert.Equal(t, "double", *child.Type)
 		}
 	}
-
-	testCatalogue(t, iso20022model)
-
-	listCatalogue(t, iso20022model)
-
-	testMaxOccurs(t, iso20022model)
-
-	testNoLoop(t, iso20022model)
 }
 
-func testMaxOccurs(t *testing.T, mdl *model.Iso20022) {
-	postlAddress := ExpandElement("PostalAddress4", mdl, nil)
+func TestMaxOccurs(t *testing.T) {
+	postlAddress := ExpandElement("PostalAddress4", iso20022model, nil)
 	assert.NotNil(t, postlAddress)
+	log.Printf("Postal address has %v children\n", len(postlAddress.Children))
 
 	// Find the AddressLine element
-	var addressLine *Element
+	var addressLine *model.BasicElement
 	for _, element := range postlAddress.Children {
+		log.Printf("Child: %v\n", *element.Name)
 		if *element.Name == "AddressLine" {
 			addressLine = element
-			log.Default().Printf("Found Address Line: %v\n", *addressLine.Name)
-			log.Default().Printf("Found Max Occurs: %v\n", *addressLine.MaxOccurs)
-			log.Default().Printf("Found Required: %v\n", addressLine.Required)
+			log.Printf("Found Address Line: %v\n", *addressLine.Name)
+			log.Printf("Found Max Occurs: %v\n", *addressLine.MaxOccurs)
+			log.Printf("Found Required: %v\n", addressLine.Required)
 
 			break
 		}
@@ -95,34 +103,33 @@ func testMaxOccurs(t *testing.T, mdl *model.Iso20022) {
 	assert.Equal(t, false, addressLine.Required)
 }
 
-func testNoLoop(t *testing.T, mdl *model.Iso20022) {
-	postlAddress := ExpandElement("PostalAddress", mdl, nil)
+func TestNoLoop(t *testing.T) {
+	postlAddress := ExpandElement("PostalAddress", iso20022model, nil)
 	assert.NotNil(t, postlAddress)
 }
 
-func testCatalogue(t *testing.T, model *model.Iso20022) {
-	catalogue := ExpandCatalogue("CustomerCreditTransferInitiationV02", model)
-	assert.NotNil(t, catalogue)
-}
+// func TestCatalogue(t *testing.T) {
+// catalogue := ExpandCatalogue("CustomerCreditTransferInitiationV02", model)
+// assert.NotNil(t, catalogue)
+// }
 
-func listCatalogue(t *testing.T, model *model.Iso20022) {
-	catalogueEntries := ListCatalogue(model)
+func TestListCatalogue(t *testing.T) {
+	catalogueEntries := ListCatalogue(iso20022model)
 	assert.NotNil(t, catalogueEntries)
 	assert.True(t, len(*catalogueEntries) > 0)
 	for _, entry := range *catalogueEntries {
 		assert.NotNil(t, entry.Name)
-		fmt.Printf("Name: %v\n", *entry.Name)
-		if entry.Description != nil {
-			fmt.Printf("Description: %v\n", *entry.Description)
-		}
+
+		// fmt.Printf("Name: %v\n", *entry.Name)
+
 		assert.NotNil(t, entry.MessageName)
-		fmt.Printf("MessageName: %v\n", *entry.MessageName)
-		if entry.MessageDefinition != nil {
-			fmt.Printf("MessageDefinition: %v\n", *entry.MessageDefinition)
-		}
+		// fmt.Printf("MessageName: %v\n", *entry.MessageName)
+		// if entry.MessageDefinition != nil {
+		// 	fmt.Printf("MessageDefinition: %v\n", *entry.MessageDefinition)
+		// }
 		assert.NotNil(t, entry.FunctionalArea)
-		fmt.Printf("FunctionalArea: %v\n", *entry.FunctionalArea)
+		// fmt.Printf("FunctionalArea: %v\n", *entry.FunctionalArea)
 		assert.NotNil(t, entry.Domain)
-		fmt.Printf("Domain: %v\n", *entry.Domain)
+		// fmt.Printf("Domain: %v\n", *entry.Domain)
 	}
 }

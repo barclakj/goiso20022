@@ -5,12 +5,12 @@ import (
 	"log"
 	"net/http"
 
-	"realizr.io/iso20022/repo"
+	"realizr.io/iso20022/model"
 
 	"encoding/json"
 )
 
-func GetJSONRepresentation(element *repo.Element) (string, error) {
+func GetJSONRepresentation(element *model.BasicElement) (string, error) {
 	if element == nil {
 		return "", nil
 	}
@@ -23,7 +23,7 @@ func GetJSONRepresentation(element *repo.Element) (string, error) {
 	return string(jsonBytes), nil
 }
 
-func GetCatalogueJSONRepresentation(catalogues *[]repo.CatalogueEntry) (string, error) {
+func GetCatalogueJSONRepresentation(catalogues *[]model.CatalogueEntry) (string, error) {
 	if catalogues == nil {
 		return "", nil
 	}
@@ -36,7 +36,7 @@ func GetCatalogueJSONRepresentation(catalogues *[]repo.CatalogueEntry) (string, 
 	return string(jsonBytes), nil
 }
 
-func outputElement(element *repo.Element, buffer *bytes.Buffer) {
+func outputElement(element *model.BasicElement, buffer *bytes.Buffer) {
 	if element != nil {
 		buffer.WriteString("<div>" + *element.Name + " - " + *element.Description)
 		for _, child := range element.Children {
